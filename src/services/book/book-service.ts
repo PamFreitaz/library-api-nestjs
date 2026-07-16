@@ -1,10 +1,9 @@
-import { Inject, Injectable, Logger } from "@nestjs/common";
+import { Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { IBookRepository } from "../../domain/interface/book/book.interface.repository";
 import { BookCreateDto } from "../../domain/dtos/book/book-create.dto";
 import { Book } from "../../domain/entities/book-entity";
-import { Index } from "typeorm";
-import { error } from "console";
 import { BookUpdateDto } from "../../domain/dtos/book/book-update.dto";
+import { BookEmmprestimoDto } from "../../domain/dtos/book/book-emprestimo.dto";
 
 @Injectable()
 export class BookService {
@@ -233,5 +232,52 @@ export class BookService {
             `${resumo.join('\n')}\n` + 
             `Total investido: R$${totalInvestido.toFixed(2)}\n` +
             `Livros adicionados: ${livros.length}`;
+    }
+
+
+    // EXERCÍCIO 4
+
+    /*
+    Livros < 30.00 não tem desconto
+    Sócios tem 20% desconto
+    Código: 'estudante' tem 15% desconto
+    Ambos juntos aplica somente o maior valor não acumula
+    */
+
+
+    async calcularEmprestimo (dto: BookEmmprestimoDto): Promise< number > {
+
+        const book = await this.bookRepository.findById(dto.bookId);
+
+        //se não existir o livro dá erro
+        if(!book){
+            throw new NotFoundException (`O livro com o Id ${dto.bookId} não foi encontrado`);
+        }
+
+        //valoFinal é igual ao valor do aluguel do livro
+        let valorFinal = book.valorAluguel;
+
+        //livros abaixo de 30.00 não tem desconto
+        if(valorFinal >= 30){
+            //taxa de desconto começa com 0
+            let taxaDesconto = 0;
+
+        //se for socio ele tem 20% de desconto
+        if(dto.isSocio){
+            taxaDesconto = 0.20;
+        }
+        //aqui não é obrigatório, mas tá validando o usuario digitar a palavra estudante em case ou não  
+        if(dto.codigoDesconto?.toUpperCase() === 'ESTUDANTE'){
+            //se ele for estudante vai ter 0.15 de desconto, mas se ele for socio a taxa de desconto dele já será de 0.20
+            //então 0.15 > taxaDesconto é falso. Desse jeito é aplcicado o valor de 0.15 na taxa de desconto
+            //e se ele não for socio, a taxa de desconto dele vem zerada, 0.15 > taxaDesconto é true
+            if(0.15 > taxaDesconto){
+                taxaDesconto = 0.15
+            }
+        }
+        //valorFinal é o valor * 100% - a taxa de desconto
+        valorFinal = valorFinal * (1 - taxaDesconto);
+        }
+        return valorFinal ;
     }
 }

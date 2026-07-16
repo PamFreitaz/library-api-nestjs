@@ -4,6 +4,7 @@ import { ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
 import { BookCreateDto } from "../../domain/dtos/book/book-create.dto";
 import { Book } from "../../domain/entities/book-entity";
 import { BookUpdateDto } from "../../domain/dtos/book/book-update.dto";
+import { BookEmmprestimoDto } from "../../domain/dtos/book/book-emprestimo.dto";
 
 @ApiTags('Books') //agrupa dentro do swagger todas as rotas de Books
 @Controller('books')
@@ -131,7 +132,20 @@ export class BookController {
         return await this.bookService.resumoEntradaAcervo(intervaloInicial, intervaloFinal);
     }
 
+    @Post('relatorio/calcular-emprestimo')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({
+        summary: 'Calcular valor final',
+        description: 'Calcula o valor final do emprestimo aplicando desconto da regra de negócio'
+    })
+    @ApiResponse({
+        status: 200,
+        description: 'Desconto aplicado com sucesso',
+        type: Number
+    })
 
-
-
+    async calcularEmprestimo(@Body() dto:BookEmmprestimoDto): Promise<number>{
+        return await this.bookService.calcularEmprestimo(dto);
+    }
+    
 }
