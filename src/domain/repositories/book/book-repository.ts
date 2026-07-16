@@ -2,7 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { IBookRepository } from "../../interface/book/book.interface.repository";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Book } from "../../entities/book-entity";
-import { Repository } from "typeorm";
+import { Between, Repository } from "typeorm";
 
 @Injectable()
 export class BookRepository implements IBookRepository {
@@ -27,5 +27,12 @@ export class BookRepository implements IBookRepository {
     async delete(id: number): Promise<void> {
         await this.bookRepository.delete(id);
     }
-    
+
+    async findByCreatedAtBetween(intervaloInicial: Date, intervaloFinal: Date): Promise<Book[]>{
+        return await this.bookRepository.find({
+            where:{
+                createdAt: Between(intervaloInicial, intervaloFinal)
+            }
+        });
+    }
 }

@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseIntPipe, Patch, Post } from "@nestjs/common";
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseIntPipe, Patch, Post, Query } from "@nestjs/common";
 import { BookService } from "../../services/book/book-service";
 import { ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
 import { BookCreateDto } from "../../domain/dtos/book/book-create.dto";
@@ -7,18 +7,19 @@ import { BookUpdateDto } from "../../domain/dtos/book/book-update.dto";
 
 @ApiTags('Books') //agrupa dentro do swagger todas as rotas de Books
 @Controller('books')
-export class BookController{
+export class BookController {
 
-    constructor( 
+    constructor(
         private readonly bookService: BookService
-    ) {}
+    ) { }
 
     @Post()
     @HttpCode(HttpStatus.CREATED)
     //ApiOperation define o titulo e a descrição no swagger
     @ApiOperation({
         summary: 'Cadastrar um livro novo',
-        description: 'Insere um livro novo na biblioteca e calcula a faixa etária'})
+        description: 'Insere um livro novo na biblioteca e calcula a faixa etária'
+    })
     //Informa no swagger se der tudo certo com a estrutura da entidade
     @ApiResponse({
         status: 201,
@@ -26,7 +27,7 @@ export class BookController{
         type: Book,
     })
     //O Body pega as informações enviadas no json na requisição, joga na variábel dadosDoLivro que está tipada para usar as informações do dto
-    async create(@Body() dadosDoLivro: BookCreateDto): Promise<Book>{
+    async create(@Body() dadosDoLivro: BookCreateDto): Promise<Book> {
         return this.bookService.create(dadosDoLivro);
     }
 
@@ -35,12 +36,14 @@ export class BookController{
     @HttpCode(HttpStatus.OK)
     @ApiOperation({
         summary: 'Listar todos os livros',
-        description: 'Lista todos os livros cadastrados com os códigos de catalogação'})
+        description: 'Lista todos os livros cadastrados com os códigos de catalogação'
+    })
     @ApiResponse({
         status: 200,
-        description: 'Lista retornada com sucesso'})
+        description: 'Lista retornada com sucesso'
+    })
 
-    async findAll(){
+    async findAll() {
         return await this.bookService.findAll();
     }
 
@@ -60,7 +63,7 @@ export class BookController{
         description: 'Livro não encontrado'
     })
     //PaseIntPipe converte o Id que vem da URL em string e já devolve em número novamente
-    async findById(@Param('id', ParseIntPipe) id: number): Promise<Book>{
+    async findById(@Param('id', ParseIntPipe) id: number): Promise<Book> {
         return await this.bookService.findById(id);
     }
 
@@ -83,7 +86,7 @@ export class BookController{
         status: 404,
         description: 'Livro não encontrado para atualização'
     })
-    async update(@Param('id', ParseIntPipe)id: number, @Body() updatedData: BookUpdateDto): Promise<Book>{
+    async update(@Param('id', ParseIntPipe) id: number, @Body() updatedData: BookUpdateDto): Promise<Book> {
         return await this.bookService.update(id, updatedData);
     }
 
@@ -103,7 +106,32 @@ export class BookController{
         description: 'Livro não encontrado'
     })
 
-    async delete(@Param('id', ParseIntPipe) id:number): Promise<void>{
+    async delete(@Param('id', ParseIntPipe) id: number): Promise<void> {
         return await this.bookService.delete(id);
     }
+
+
+    @Get('relatorio/resumo-entrada')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({
+        summary: 'Buscar resumo de entradas',
+        description: 'Retorna um relatório em texto com as entradas e valores investidos no período de data selecionado'
+    })
+    @ApiResponse({
+        status: 200,
+        description: 'Resumo gerado com sucesso',
+        type: String
+    })
+    //Query captura as informações passadas diretamente na URL como parâmetros de busca (ex: ?inicio=2026-01-01&fim=2026-07-31)
+    async resumoEntrada(@Query('inicio') inicio: string, @Query('fim') fim: string): Promise<string> {
+
+        const intervaloInicial = new Date(inicio);
+        const intervaloFinal = new Date(fim);
+
+        return await this.bookService.resumoEntradaAcervo(intervaloInicial, intervaloFinal);
+    }
+
+
+
+
 }

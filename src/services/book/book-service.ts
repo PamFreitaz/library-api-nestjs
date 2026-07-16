@@ -52,7 +52,7 @@ export class BookService {
         }
     };
 
-    async findAll(): Promise<any[]>{
+    async findAll(): Promise<any[]> {
 
         //encontra todos os livros no banco
         const books = await this.bookRepository.findAll();
@@ -65,18 +65,18 @@ export class BookService {
 
         // .map() percorre a lista de livros para etiquetar, book é o livro e index é a posição do livro
         return books.map((book, index) => {
-            return{
+            return {
                 ...book, // Copia todas as colunas do banco automaticamente (id, title, autor...) modo spread
                 codigoCatalogacao: codigosCatalogacao[index], //injeta a etiqueta calculada
             }
         });
     }
 
-    async findById(id: number): Promise<Book>{
+    async findById(id: number): Promise<Book> {
         const book = await this.bookRepository.findById(id);
 
-        if(!book){
-            throw new Error (`Livro com ${id} não encontrado`);
+        if (!book) {
+            throw new Error(`Livro com ${id} não encontrado`);
         }
         return book;
     }
@@ -94,12 +94,12 @@ export class BookService {
     - retornar o livro salvo
     */
 
-    async update(id: number, updatedData: BookUpdateDto): Promise<Book>{
+    async update(id: number, updatedData: BookUpdateDto): Promise<Book> {
         this.logger.log(`Tentando atualizar o livro com o ID [${id}]`);
 
         const book = await this.bookRepository.findById(id);
 
-        if(!book){
+        if (!book) {
             throw new Error(`Livro com id [${id}] não encontrado para atualização`)
         }
         //spread
@@ -108,10 +108,10 @@ export class BookService {
             ...updatedData
         };
         //Coalescencia Nulla ?? melhor que o ternario, ela olha pra esquerda se não for, ele olha pra direito
-        if(updatedData.qtdPaginas !== undefined || updatedData.category !== undefined){
+        if (updatedData.qtdPaginas !== undefined || updatedData.category !== undefined) {
             const paginas = updatedData.qtdPaginas ?? book.qtdPaginas;
             const category = updatedData.category ?? book.category;
-            
+
             updatedBook.faixaEtaria = this.classificarLivro(paginas, category)
         }
 
@@ -122,13 +122,13 @@ export class BookService {
 
 
 
-    async delete(id: number): Promise<void>{
+    async delete(id: number): Promise<void> {
 
         const book = await this.bookRepository.findById(id);
 
         //se o livro não existir gera um erro com mensagem
-        if(!book){
-            throw new Error (`Livro com ${id} não encontrado para exclusão`)
+        if (!book) {
+            throw new Error(`Livro com ${id} não encontrado para exclusão`)
         }
         //se existir manda o repository deletar
         await this.bookRepository.delete(id);
@@ -184,6 +184,54 @@ export class BookService {
         } return codigos;
     }
 
+    //EXERCICIO 3:
 
+    //promise string para, no final ,retornar uma relatorio em string
+    async resumoEntradaAcervo(intervaloInicial: Date, intervaloFinal: Date): Promise<string> {
 
+        //buscando livros existentes no banco
+        const livros = await this.bookRepository.findByCreatedAtBetween(intervaloInicial, intervaloFinal);
+
+        //se não for encontrado nenhum livro na lista passsa a mensagem
+        if (livros.length === 0) {
+            return `Nenhum livro foi adicionado ao acervo no período selecionado`
+        }
+        // variavel para guardar todo o valor do dinheiro investido - ela é alimentada dentro do reduce
+        let totalInvestido = 0;
+
+        //reduce percorre o array de livros q veio do banco item por item para transformar toda a lista em um único resultado final
+        const agrupadoPorTitulo = livros.reduce((acumulador, livroAtual) => {
+            const titulo = livroAtual.title;
+
+            //somando o valor do aluguel ao total investido acumulado
+            totalInvestido += livroAtual.valorAluguel;
+
+            //se não existir o titulo no acumulador, vai criar uma estrutura com os campos definidos no tipo (antes do return do if)
+            if (!acumulador[titulo]) {
+                acumulador[titulo] = { quantidade: 0, total: 0 }
+            }
+            //somando a quantidade de titulos encontrados iguais (exemplares)
+            acumulador[titulo].quantidade += 1;
+            //somando o valor total acumulado daquele livro específico com o valor do livro atual
+            acumulador[titulo].total += livroAtual.valorAluguel;
+
+            //retornando os valores salvos para a proxima volta
+            return acumulador;
+
+            //declarando que o 1º paramentro (o acumulador) do reduce é um objeto com esse formato específico
+        }, {} as Record<string, { quantidade: number, total: number }>);
+
+        //          ---transformando o objeto em array---e mapeando para passar a lista de frases prontas
+        const resumo = Object.entries(agrupadoPorTitulo).map(([titulo, dados]) => {
+            const plural = dados.quantidade > 1 ? 'exemplares' : 'exemplar';
+            // Ajustado para garantir o R$ e formatar o valor com duas casas decimais com o .toFixed(2)
+            return `${titulo} - x${dados.quantidade} ${plural} = R${dados.total.toFixed(2)}`;
+        });
+
+        return `Entrada no Acervo:\n` +
+            //join para ficar um livro em baixo do outro
+            `${resumo.join('\n')}\n` + 
+            `Total investido: R$${totalInvestido.toFixed(2)}\n` +
+            `Livros adicionados: ${livros.length}`;
+    }
 }

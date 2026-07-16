@@ -6,6 +6,7 @@ export type IBookRepository = {
     findById(id: number): Promise<Book | null>; // Retorna se o ID for encontrado ou se for nulo
     findAll(): Promise<Book[]>; // retorna uma lista cheia de Books
     delete(id: number): Promise<void>; // void pq não tem retorno, somente apaga e encerra a operação
+    findByCreatedAtBetween(intervaloInicial: Date, intervaloFinal: Date): Promise<Book[]>
 };  
 
 
