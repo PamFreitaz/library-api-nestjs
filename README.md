@@ -1,99 +1,104 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+#  Library API (NestJS)
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+Bem-vindo ao repositório da **Library API**! Uma API RESTful robusta desenvolvida com **NestJS** para gerenciamento de acervos, locações, relatórios analíticos de biblioteca e aplicação de regras de negócio automatizadas.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://coveralls.io/github/nestjs/nest?branch=master" target="_blank"><img src="https://coveralls.io/repos/github/nestjs/nest/badge.svg?branch=master#9" alt="Coverage" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+O projeto foi construído aplicando conceitos de arquitetura limpa, separação de responsabilidades (Controllers, Services, DTOs e Repositories) e tipagem estrita com TypeScript.
 
-## Description
+---
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+##  Tecnologias Utilizadas
 
-## Project setup
+O projeto faz uso das seguintes tecnologias e bibliotecas presentes no ecossistema Node.js:
 
+*   **Framework:** [NestJS v10](https://nestjs.com)
+*   **Linguagem:** [TypeScript v5](https://typescriptlang.org)
+*   **Banco de Dados:** SQL Server (MSSQL Local/Docker)
+*   **ORM:** [TypeORM](https://typeorm.io)
+*   **Documentação:** [Swagger/OpenAPI v11](https://swagger.io)
+*   **Validação de Dados:** `class-validator` & `class-transformer`
+*   **Gerenciador de Pacotes:** `Yarn`
+
+---
+
+##  Funcionalidades e Regras de Negócio Resolvidas
+
+A API conta com um CRUD completo de livros integrado ao banco de dados SQL Server e uma série de serviços inteligentes que resolvem desafios avançados de lógica:
+
+###  CRUD de Livros
+*   **Cadastro (`POST`):** Instancia entidades no banco calculando a faixa etária baseada em regras internas. Inclui logs operacionais em tempo real e proteção de integridade com blocos `try/catch`.
+*   **Listagem (`GET`):** Retorna todos os registros injetando de forma dinâmica etiquetas catalográficas calculadas sob demanda.
+*   **Atualização (`PATCH`):** Permite atualizações parciais de dados aplicando o operador de *Coalescência Nula (`??`)* e o *Spread Operator (`...`)* para reclassificar as regras caso quantidade de páginas ou categoria mudem.
+*   **Exclusão (`DELETE`):** Remove livros de forma definitiva tratando exceções caso o ID não exista.
+
+###  Geração de Catalogação Dinâmica
+Gera identificadores de catalogação exclusivos com base na posição indexada dos itens, utilizando lógica de múltiplos matemáticos:
+*   Múltiplos de 3 e 5 ao mesmo tempo: Recebem o prefixo `ACERVO-`
+*   Múltiplos apenas de 3: Recebem o prefixo `REF-`
+*   Múltiplos apenas de 5: Recebem o prefixo `DEST-`
+*   Demais posições: Recebem o prefixo padrão `LIV-`
+
+###  Resumo de Entrada no Acervo por Período
+Busca as inserções no banco em um intervalo de datas e utiliza o método `.reduce()` para agrupar livros repetidos pelo título em uma estrutura de dicionário (`Record<string, object>`). O serviço calcula o acumulado investido e devolve uma string limpa formatada com quebras de linha (`\n`), pluralização correta de palavras (`exemplar`/`exemplares`) e valores monetários ajustados para duas casas decimais com `.toFixed(2)`.
+
+###  Lógica Avançada de Descontos em Empréstimos
+Calcula o preço final do aluguel com base em critérios estritos que não se acumulam, elegendo apenas a maior vantagem:
+*   Livros com preço base menor que R\$ 30,00 não recebem desconto.
+*   Usuários identificados como Sócios ganham 20% de desconto.
+*   Usuários com o cupom `ESTUDANTE` (tratado com `.toUpperCase()`) ganham 15% de desconto.
+
+### Relatório Analítico de Empréstimos Diários
+Recebe uma coleção de registros por DTO e processa os dados de maneira declarativa linha a linha usando laços `for...of` tradicionais combinados com o desmanche de objetos pelo `Object.entries()`. O método devolve um objeto contendo:
+1. O dia exato de maior movimento de empréstimos (privilegiando o primeiro a chegar ao topo em empates).
+2. O dia de menor movimento de empréstimos.
+3. A média diária com formatação numérica precisa.
+4. O total de dias que fecharam acima da média estipulada.
+5. Um bônus que faz a contagem de frequência de retirada de livros e lista todos os campeões da semana (tratando empates e adicionando-os em lista via `.push()`).
+
+---
+
+## Como Executar o Projeto
+
+Siga os passos abaixo para rodar a aplicação em seu ambiente de desenvolvimento:
+
+### 1. Clonar o Repositório
 ```bash
-$ yarn install
+git clone https://github.com
+cd library-api-nestjs
 ```
 
-## Compile and run the project
-
+### 2. Instalar as Dependências
+Instale todos os pacotes listados no `package.json` utilizando o Yarn:
 ```bash
-# development
-$ yarn run start
-
-# watch mode
-$ yarn run start:dev
-
-# production mode
-$ yarn run start:prod
+yarn install
 ```
 
-## Run tests
+### 3. Configurar as Variáveis de Ambiente (`.env`)
+Crie um arquivo `.env` na raiz do projeto e configure as credenciais de conexão do seu banco de dados SQL Server. *(Lembrando que o arquivo `.env` está protegido e ignorado no Git pelo `.gitignore`)*.
 
+### 4. Rodar as Migrations do Banco
+Garante que a sua tabela `books` e suas respectivas colunas sejam criadas corretamente na sua base `library_db`:
 ```bash
-# unit tests
-$ yarn run test
-
-# e2e tests
-$ yarn run test:e2e
-
-# test coverage
-$ yarn run test:cov
+yarn migration:run
 ```
 
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
-
+### 5. Iniciar a Aplicação
+Para rodar a API em modo de desenvolvimento assistido (com atualização automática no VS Code):
 ```bash
-$ yarn install -g mau
-$ mau deploy
+yarn start:dev
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+---
 
-## Resources
+## Testando as Rotas na Interface do Swagger
 
-Check out a few resources that may come in handy when working with NestJS:
+Com a aplicação rodando, abra o seu navegador de preferência e digite o endereço de documentação ativa:
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+```text
+http://localhost:3000/api
+```
+*(ou altere para `/docs` dependendo da configuração estabelecida no seu arquivo `main.ts`)*
 
-## Support
+Dentro da interface do Swagger, você poderá clicar nos botões **"Try it out"** de rotas como a `POST /relatorio/emprestimo` e injetar corpos de requisição (`Body`) personalizados para testar os retornos matemáticos calculados pela API.
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+---
+Desenvolvido por PamFreitaz.
