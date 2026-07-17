@@ -4,6 +4,7 @@ import { BookCreateDto } from "../../domain/dtos/book/book-create.dto";
 import { Book } from "../../domain/entities/book-entity";
 import { BookUpdateDto } from "../../domain/dtos/book/book-update.dto";
 import { BookEmmprestimoDto } from "../../domain/dtos/book/book-emprestimo.dto";
+import { EmprestimoDiarioDto } from "../../domain/dtos/book/book-emprestimo-diario.dto";
 
 @Injectable()
 export class BookService {
@@ -229,7 +230,7 @@ export class BookService {
 
         return `Entrada no Acervo:\n` +
             //join para ficar um livro em baixo do outro
-            `${resumo.join('\n')}\n` + 
+            `${resumo.join('\n')}\n` +
             `Total investido: R$${totalInvestido.toFixed(2)}\n` +
             `Livros adicionados: ${livros.length}`;
     }
@@ -245,39 +246,161 @@ export class BookService {
     */
 
 
-    async calcularEmprestimo (dto: BookEmmprestimoDto): Promise< number > {
+    async calcularEmprestimo(dto: BookEmmprestimoDto): Promise<number> {
 
         const book = await this.bookRepository.findById(dto.bookId);
 
         //se não existir o livro dá erro
-        if(!book){
-            throw new NotFoundException (`O livro com o Id ${dto.bookId} não foi encontrado`);
+        if (!book) {
+            throw new NotFoundException(`O livro com o Id ${dto.bookId} não foi encontrado`);
         }
 
         //valoFinal é igual ao valor do aluguel do livro
         let valorFinal = book.valorAluguel;
 
         //livros abaixo de 30.00 não tem desconto
-        if(valorFinal >= 30){
+        if (valorFinal >= 30) {
             //taxa de desconto começa com 0
             let taxaDesconto = 0;
 
-        //se for socio ele tem 20% de desconto
-        if(dto.isSocio){
-            taxaDesconto = 0.20;
+            //se for socio ele tem 20% de desconto
+            if (dto.isSocio) {
+                taxaDesconto = 0.20;
+            }
+            //aqui não é obrigatório, mas tá validando o usuario digitar a palavra estudante em case ou não  
+            if (dto.codigoDesconto?.toUpperCase() === 'ESTUDANTE') {
+                //se ele for estudante vai ter 0.15 de desconto, mas se ele for socio a taxa de desconto dele já será de 0.20
+                //então 0.15 > taxaDesconto é falso. Desse jeito é aplcicado o valor de 0.15 na taxa de desconto
+                //e se ele não for socio, a taxa de desconto dele vem zerada, 0.15 > taxaDesconto é true
+                if (0.15 > taxaDesconto) {
+                    taxaDesconto = 0.15
+                }
+            }
+            //valorFinal é o valor * 100% - a taxa de desconto
+            valorFinal = valorFinal * (1 - taxaDesconto);
         }
-        //aqui não é obrigatório, mas tá validando o usuario digitar a palavra estudante em case ou não  
-        if(dto.codigoDesconto?.toUpperCase() === 'ESTUDANTE'){
-            //se ele for estudante vai ter 0.15 de desconto, mas se ele for socio a taxa de desconto dele já será de 0.20
-            //então 0.15 > taxaDesconto é falso. Desse jeito é aplcicado o valor de 0.15 na taxa de desconto
-            //e se ele não for socio, a taxa de desconto dele vem zerada, 0.15 > taxaDesconto é true
-            if(0.15 > taxaDesconto){
-                taxaDesconto = 0.15
+        return valorFinal;
+    }
+
+    /* 
+        Fazer um relatório de emprestimos por dia
+        1 - dia com + emprestimo
+        2 - dia com - emprestimo
+        3 - Média diaria
+        4 - Qtos dias ficaram acima da media
+        5 - listar livris mais emprestados na semana
+    */
+
+    // uma promise de um objeto, um array
+    async relatorioEmprestimos(dados: EmprestimoDiarioDto[]): Promise<object> {
+
+        if (!dados || dados.length === 0) {
+            this.logger.warn('Nenhum dado encontrado')
+            return {
+                diaComMaisEmprestimos: null,
+                diaComMenosEmprestimos: null,
+                mediaDiariaDeEmprestimos: 0,
+                quantosDiasAcimaMedia: 0,
+                maisEmprestadosSemana: []
+            }; // vai retornar algo q ainda não sei oq é
+        }
+
+        //Dias com mais emprestimos
+        //começando com o primeiro dia da lista como o dia de mais emprestimos no array, coloquei o 0 para simular que a posição 0 é o dia com mais emprestimos
+        let diaComMaisEmprestimos = dados[0]
+        //passando por todos os dias cadastrados um por um até o final do array
+        for (const diaAtual of dados) {
+            // se a qtd de emprestimo do diaAtual for maior que a qtd de emprestimos do dia salvo na variavel diaComMaisEmprestimos, então.. 
+            if (diaAtual.quantidadeEmprestimos > diaComMaisEmprestimos.quantidadeEmprestimos) {
+                //...então diaComMaisEmprestimos recebe o diaAtual o campeão do movimento
+                diaComMaisEmprestimos = diaAtual;
             }
         }
-        //valorFinal é o valor * 100% - a taxa de desconto
-        valorFinal = valorFinal * (1 - taxaDesconto);
+
+        //Dias com menos emprestimos
+        let diaComMenosEmprestimos = dados[0]
+
+        for (const diaAtual of dados) {
+            if (diaAtual.quantidadeEmprestimos < diaComMenosEmprestimos.quantidadeEmprestimos) {
+                diaComMenosEmprestimos = diaAtual;
+            }
         }
-        return valorFinal ;
+
+        //Fazendo a média
+        // variavel pra acumular a soma de todos os dias
+        let somaEmprestimos = 0;
+
+        for (const diaAtual of dados) {
+            //a cada volta pega o valor guardado na variavel e soma pela qtd de emprestimo do diaAtual 
+            somaEmprestimos = somaEmprestimos + diaAtual.quantidadeEmprestimos;
+        }
+
+
+        //mediaDiaria é a soma dos emprestimos dividido pelo tamanho da lista (dados.length) que é o array onde tem todos os dias salvos na lista
+        const mediaDiaria = somaEmprestimos / dados.length;
+
+        //quantos dias ficaram acima da media
+        //diasAcimaMedia começando com 0
+        let diasAcimaMedia = 0;
+
+        //percorrendo todos os dias dentro da lista dos dados
+        for (const diaAtual of dados) {
+            if (diaAtual.quantidadeEmprestimos > mediaDiaria) {
+                diasAcimaMedia = diasAcimaMedia + 1;
+            }
+        }
+
+
+        //Fazendo a contagem dos livros
+        // uma variavel para ser o objeto que vai guardar o nome e qtd de emprestimos 
+        let contagemLivros: Record<string, number> = {};
+
+        // primeiro for olha para o dia
+        for (const dia of dados) {
+            //segundo for olha para o livro emprestado no dia
+            for (const livro of dia.livrosEmprestados) {
+                //se não tiver o livro emprestado ainda
+                if (!contagemLivros[livro]) {
+                    //ele cria a ficha dele zerada
+                    contagemLivros[livro] = 0;
+                }
+                //e agora soma mais 1 na contagem
+                contagemLivros[livro] = contagemLivros[livro] + 1;
+            }
+        }
+
+        //descobrir qual foi o número máximo de vezes que qualquer livro foi emprestado.
+        //variavel para guardar o recorde de emprestimos por livro
+        let maiorContagem = 0;
+
+        //objetc.entries vai fazer o objeto contagemLivros virar em um array pq o for não percorre em objeto, e aí agora a cada volta ele lê o titulo e a qunatidade
+        for (const [titulo, quantidade] of Object.entries(contagemLivros)) {
+            //se a quantidade for > q a maiorContagem, maiorContagem passa a ser esse numero
+            if (quantidade > maiorContagem) {
+                maiorContagem = quantidade;
+            }
+        }
+
+        //Listar os livros mais emprestados na semana
+        // uma variavel q vai guardar uma lista dos livros mais emprestados começando vazia
+        let livrosMaisEmprestados: string[] = [];
+
+        // Object.entries para transformar o objeto contagemLivros em lista e o for percorrer livro por livro
+        for (const [titulo, quantidade] of Object.entries(contagemLivros)) {
+            //se a quantidade for igual a maiorContagem
+            if (quantidade === maiorContagem) {
+                //então empurramos o nome do livro para dentro da nossa lista
+                livrosMaisEmprestados.push(titulo);
+            }
+        }
+        this.logger.log('Relatório gerado com sucesso!');
+
+        return {
+            diaComMaisEmprestimos: diaComMaisEmprestimos.data,
+            diaComMenosEmprestimos: diaComMenosEmprestimos.data,
+            mediaDiariaDeEmprestimos: Number(mediaDiaria.toFixed(2)),
+            quantosDiasAcimaMedia: diasAcimaMedia,
+            maisEmprestadosSemana: livrosMaisEmprestados
+        };
     }
 }

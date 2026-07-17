@@ -1,10 +1,11 @@
 import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseIntPipe, Patch, Post, Query } from "@nestjs/common";
 import { BookService } from "../../services/book/book-service";
-import { ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
+import { ApiBody, ApiOperation, ApiParam, ApiResponse, ApiTags } from "@nestjs/swagger";
 import { BookCreateDto } from "../../domain/dtos/book/book-create.dto";
 import { Book } from "../../domain/entities/book-entity";
 import { BookUpdateDto } from "../../domain/dtos/book/book-update.dto";
 import { BookEmmprestimoDto } from "../../domain/dtos/book/book-emprestimo.dto";
+import { EmprestimoDiarioDto } from "../../domain/dtos/book/book-emprestimo-diario.dto";
 
 @ApiTags('Books') //agrupa dentro do swagger todas as rotas de Books
 @Controller('books')
@@ -36,7 +37,7 @@ export class BookController {
     @Get()
     @HttpCode(HttpStatus.OK)
     @ApiOperation({
-        summary: 'Listar todos os livros',
+        summary: '- Listar todos os livros',
         description: 'Lista todos os livros cadastrados com os códigos de catalogação'
     })
     @ApiResponse({
@@ -52,7 +53,7 @@ export class BookController {
     @Get(':id')
     @HttpCode(HttpStatus.OK)
     @ApiOperation({
-        summary: 'Buscas livro por ID',
+        summary: '- Buscas livro por ID',
         description: 'Busca os detalhes de um livro específico cadastrado no banco de dados'
     })
     @ApiResponse({
@@ -65,14 +66,14 @@ export class BookController {
     })
     //PaseIntPipe converte o Id que vem da URL em string e já devolve em número novamente
     async findById(@Param('id', ParseIntPipe) id: number): Promise<Book> {
-        return await this.bookService.findById(id);
+        return this.bookService.findById(id);
     }
 
 
     @Patch(':id')
     @HttpCode(HttpStatus.OK)
     @ApiOperation({
-        summary: 'Atualizar um livro',
+        summary: '- Atualizar um livro',
         description: 'Atualiza parcialmente um livro cadastrado no banco de dados, mantendo a regra de negocio para faixa etaria'
     })
     @ApiResponse({
@@ -88,14 +89,14 @@ export class BookController {
         description: 'Livro não encontrado para atualização'
     })
     async update(@Param('id', ParseIntPipe) id: number, @Body() updatedData: BookUpdateDto): Promise<Book> {
-        return await this.bookService.update(id, updatedData);
+        return this.bookService.update(id, updatedData);
     }
 
 
     @Delete(':id')
     @HttpCode(HttpStatus.NO_CONTENT) // Retorna o status 204 No Content que é o padrão para exclusões bem-sucedidas sem retorno
     @ApiOperation({
-        summary: 'Deletar um livro',
+        summary: '- Deletar um livro',
         description: 'Remove permanentemente um livro do banco de dados'
     })
     @ApiResponse({
@@ -108,14 +109,14 @@ export class BookController {
     })
 
     async delete(@Param('id', ParseIntPipe) id: number): Promise<void> {
-        return await this.bookService.delete(id);
+        return this.bookService.delete(id);
     }
 
 
     @Get('relatorio/resumo-entrada')
     @HttpCode(HttpStatus.OK)
     @ApiOperation({
-        summary: 'Buscar resumo de entradas',
+        summary: '- Buscar resumo de entradas',
         description: 'Retorna um relatório em texto com as entradas e valores investidos no período de data selecionado'
     })
     @ApiResponse({
@@ -129,23 +130,38 @@ export class BookController {
         const intervaloInicial = new Date(inicio);
         const intervaloFinal = new Date(fim);
 
-        return await this.bookService.resumoEntradaAcervo(intervaloInicial, intervaloFinal);
+        return this.bookService.resumoEntradaAcervo(intervaloInicial, intervaloFinal);
     }
 
     @Post('relatorio/calcular-emprestimo')
     @HttpCode(HttpStatus.OK)
     @ApiOperation({
-        summary: 'Calcular valor final',
+        summary: '- Calcular valor final',
         description: 'Calcula o valor final do emprestimo aplicando desconto da regra de negócio'
     })
     @ApiResponse({
         status: 200,
         description: 'Desconto aplicado com sucesso',
-        type: Number
+        type: Number,
     })
 
     async calcularEmprestimo(@Body() dto:BookEmmprestimoDto): Promise<number>{
-        return await this.bookService.calcularEmprestimo(dto);
+        return this.bookService.calcularEmprestimo(dto);
     }
     
+
+    @Post('relatorio/emprestimo-diario')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({
+        summary: '- Gerar relatório de emprestimos'
+    })
+    @ApiResponse({
+        status: 200,
+        description: 'Relatório gerado com sucesso'
+    })
+    @ApiBody({ type: [EmprestimoDiarioDto] }) //para aparecer o json de acordo com o dto
+    async relatorioEmprestimo(@Body() dto:EmprestimoDiarioDto[]): Promise<object>{
+        return this.bookService.relatorioEmprestimos(dto);
+    }
+
 }
